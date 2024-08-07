@@ -1,6 +1,7 @@
 from time import sleep
 import discogs_client
 import json
+import pandas as pd
 
 class DiscogsAPI:
     """
@@ -29,15 +30,14 @@ class DiscogsAPI:
             print(f'Artista não encontrado: {artist}')
             return []
     
-    def _get_previous_obtained_genres(self, path) -> dict:
-        with open(path, encoding='utf-8') as json_file:
-            artists_genres = json.load(json_file)
+    def _get_previous_obtained_genres(self, path) -> pd.DataFrame:
+        artists_genres = pd.read_csv(path, usecols=range(2))
         
         return artists_genres
     
-    def _save_obtained_genres(self, artists_genres):
-        with open(self.save_genres_path, 'w') as fp:
-            json.dump(artists_genres, fp, ensure_ascii=False)
+    def _save_obtained_genres(self, artists_genres: dict, save_path: str) -> None:
+        df = pd.DataFrame(artists_genres.items())
+        df.to_csv(save_path)
     
     def _get_starting_point(self) -> int:
         if len(self.artists_genres) == 0:
@@ -64,5 +64,5 @@ class DiscogsAPI:
             self.artists_genres[id] = (artist, genre)
             sleep(1)
             self._save_obtained_genres()
-        
+
     

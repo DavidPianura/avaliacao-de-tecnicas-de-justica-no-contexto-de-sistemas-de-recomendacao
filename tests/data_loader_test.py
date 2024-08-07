@@ -1,6 +1,9 @@
 from src.data_loader import DataLoader
 import polars as pl
 
+from pyspark.sql import SparkSession
+from pyspark.sql import DataFrame
+
 base_path = 'data/raw/'
 
 """
@@ -12,6 +15,25 @@ TODO:
         - lastfm
         - imdb
 """
+
+import pytest
+
+@pytest.fixture
+def spark_fixture():
+    spark = SparkSession.builder.appName("Testing PySpark").getOrCreate()
+    yield spark
+
+def test_lastfm_load_data(spark_fixture):
+    loader = DataLoader('data/raw/lastfm/lastfm-dataset-360K/usersha1-artmbid-artname-plays.tsv',
+                        separator='\t',
+                        header= ['userID', 'artistID', 'artistName', 'plays'],
+                        encoding='utf-8'
+                        )
+    df = loader.load_data()
+    assert isinstance(df, DataFrame)
+    assert df.count == 17559530
+    assert len(df.columns) == 4
+    assert df.columns == ['userID', 'artistID', 'artistName', 'plays']
 
 def test_yahoo_music_user_artist_rating_file_type():
     loader = DataLoader(base_path + 'yahoo_music/dataset/ydata-ymusic-user-artist-ratings-v1_0.txt', 
@@ -41,3 +63,5 @@ def test_yahoo_music_artist_names_load_data():
     assert isinstance(df, pl.DataFrame)
     assert df.shape == (97956, 2)
     assert df.columns == ['artistID', 'artistName']
+
+

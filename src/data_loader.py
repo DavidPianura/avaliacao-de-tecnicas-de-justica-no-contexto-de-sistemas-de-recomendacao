@@ -1,5 +1,7 @@
-import polars as pl
-from discogs_api import DiscogsAPI
+from pyspark.sql import SparkSession
+from pyspark.sql import DataFrame
+from dotenv import load_dotenv
+from .discogs_api import DiscogsAPI
 
 class DataLoader:
     """
@@ -14,6 +16,7 @@ class DataLoader:
     """
 
     def __init__(self, file_path: str, separator: str = ',', header: list = None, encoding: str = 'utf-8'):
+        load_dotenv()
         self.file_path = file_path
         self.separator = separator
         self.header = header
@@ -21,25 +24,27 @@ class DataLoader:
         self.token = 'mDokHVmBVpXhrdfBYEJCJUgxEUipNOQhioIBNpvh'
         self.file_extension = self._infer_file_type()
 
+        self.spark = SparkSession.builder.appName("DataLoader").getOrCreate()
+
     def _infer_file_type(self) -> str:
         return self.file_path.split('.')[-1]
         
-    def load_data(self) -> pl.DataFrame:
-        if self.file_extension == 'json':
-            return self._load_json()
-        else:
-            return self._load_csv()
-        
-    def _load_json(self) -> pl.DataFrame:
-        return pl.read_json(self.file_path)
+    def load_data(self) -> DataFrame:
+        return self._load_csv()
 
-    def _load_csv(self) -> pl.DataFrame:
-        return pl.read_csv(self.file_path, 
-                           has_header=self.header is None,
-                           separator=self.separator, 
-                           new_columns = None if self.header is None else self.header, 
-                           encoding=self.encoding,
-                           null_values=[r'\N'])
+    def _load_csv(self) -> DataFrame:
+        df =  self.spark.read.csv(
+                                    self.file_path,
+                                    sep=self.separator,
+                                    inferSchema=True,
+                                    nullValue=r'\N',
+                                    encoding=self.encoding,
+                                )
+        df = df.toDF(*self.header)
+        return df
     
+    def data_to_csv(self, df: DataFrame, destination: str) -> None:
+        df.coalesce(1).write.option("header", "true").csv(destination)
+
     def populate_genres(self, df):
-        ...
+        discogs = DiscogsAPI('mDokHVmBVpXhrdfBYEJCJUgxEUipNOQhioIBNpvh')
