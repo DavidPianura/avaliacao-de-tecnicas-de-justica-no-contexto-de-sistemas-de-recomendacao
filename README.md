@@ -28,16 +28,23 @@ Alguns conjuntos de dados necessitam de autorização para download, portanto, n
 
 Após o download dos conjuntos listados, extraia-os na pasta data/raw em suas respectivas pastas.
 
-## Preparação do ambiente {#preparacao-ambiente}
+## Preparação do ambiente
 
-### Instalação das dependêndencias {#instalacao-dependencias}
+<div id = 'preparacao-ambiente'>
+
+<div id='instalacao-dependencias'>
+
+### Instalação das dependêndencias 
 
 Para instalar as dependências necessárias, utilize o comando:
 
 ```python
 pip install -r requirements.txt
 ```
-### Instalação e configuração do Spark {#instalacao-spark}
+
+<div id='instalacao-spark'>
+
+### Instalação e configuração do Spark
 
 Também faz-se necessário baixar o **Spark** neste [link](https://www.apache.org/dyn/closer.lua/spark/spark-3.5.1/spark-3.5.1-bin-hadoop3.tgz). 
 
@@ -51,7 +58,9 @@ PYSPARK_PYTHON=...
 
 na qual a variável **SPARK_HOME** deve conter o caminho onde o Spark foi extraído, **PYSPARK_DRIVER_PYTHON** contém o valor padrão *python* e **PYSPARK_PYTHON** deve conter o caminho onde a biblioteca pyspark está instalada.
 
-## Conteúdo do repositório {#conteudo-repositorio}
+<div id='conteudo-repositorio'>
+
+## Conteúdo do repositório 
 
 - **data**: contém os conjuntos de dados utilizados, tanto processados quanto em sua forma pura. 
 - **src**: contém as classes e funcionalidades desenvolvidas para execução dos experimentos. 
