@@ -28,9 +28,9 @@ Alguns conjuntos de dados necessitam de autorização para download, portanto, n
 
 Após o download dos conjuntos listados, extraia-os na pasta data/raw em suas respectivas pastas.
 
-## Preparação do ambiente
-
 <div id = 'preparacao-ambiente'>
+
+## Preparação do ambiente
 
 <div id='instalacao-dependencias'>
 
