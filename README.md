@@ -13,6 +13,9 @@ Conteúdo
     * [Instalação das dependêndencias](#instalação-das-dependêndencias)
     * [Instalação e configuração do Spark](#instalação-e-configuração-do-spark)
 3. [Conteúdo do repositório](#conteúdo-do-repositório)
+4. [Métricas para análise do problema](#métricas-para-análise-do-problema)
+
+    * [Medidas de justiça](#medidas-de-justiça)
 ****
 
 <div id='conjuntos-de-dados-utilizados'>
@@ -68,3 +71,19 @@ na qual a variável **SPARK_HOME** deve conter o caminho onde o Spark foi extra�
 - **src**: contém as classes e funcionalidades desenvolvidas para execução dos experimentos. 
 - **notebooks**: diretório que armazena os notebooks utilizados para pré-visualização dos códigos. 
 - **tests**: testes utilizados para garantir o funcionamento correto das funcionalidades.
+
+<div id='metricas-para-analise-do-problema'>
+
+## Métricas para análise do problema
+
+Para análise do problema, é realizada, primeiramente, a avaliação do sistema de recomendação. Ademais, também é utilizada 
+
+<div id='medidas-de-justica'>
+
+### Medidas de justiça
+
+A classe Evaluation utiliza algumas medidas de justiça para 
+
+$$
+\sum_{g \in G}2\sqrt{(\sqrt{p(g|u)} - \sqrt{q(g|u)})^2}
+$$

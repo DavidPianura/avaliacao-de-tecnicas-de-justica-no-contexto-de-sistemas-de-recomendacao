@@ -7,3 +7,4 @@
 .env
 pyspark_venv.tar.gz
 /Spark
+notebooks/Aula13_Exemplos_Fairness.ipynb
