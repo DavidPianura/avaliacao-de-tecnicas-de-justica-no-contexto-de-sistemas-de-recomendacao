@@ -49,11 +49,21 @@ class ALSModel:
     def make_test_predictions(self):
         predictions = self.model.transform(self.test)
         return predictions
-        
-    def get_predictions(self) -> pd.DataFrame:
-        userRec = self.model.recommendForAllUsers(10) 
+    
+    def get_predictions(self, number_of_recomendations: int = 100) -> pd.DataFrame:
+        userRec = self.model.recommendForAllUsers(number_of_recomendations) 
         userRecsOnlyItemId = userRec.select(userRec['userId'], userRec['recommendations'])
         return userRecsOnlyItemId.toPandas()
+    
+    def get_test_predictions(self) -> pd.DataFrame:
+        # Gera as previsões para o conjunto de testes
+        predictions = self.model.transform(self.test)
+        
+        # Seleciona as colunas de interesse: userId, itemId e prediction
+        selected_predictions = predictions.select(self.usercol, self.itemcol, "prediction")
+        
+        # Converte o resultado para um DataFrame do pandas
+        return selected_predictions.toPandas()
     
     def predictions_user_map(self, predictions: pd.DataFrame) -> dict:
         user_map = {}

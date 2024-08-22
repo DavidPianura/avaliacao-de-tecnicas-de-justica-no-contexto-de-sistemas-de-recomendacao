@@ -1,5 +1,7 @@
 import numpy as np
 import pandas as pd
+from typing import Literal
+from .distributions import Distributions
 
 class FairnessMeasures:
 
@@ -55,7 +57,14 @@ class FairnessMeasures:
             pearson_sum += (((p_term - til_q)^2)/til_q)
         
         return pearson_sum
-        
+    
+    def calculate_fairness_measure(self, fairness_measure: Literal['kullback-leibler', 'hellinger', 'pearson'], user_profile_dist: dict, rec_profile_dist: dict):
+        if fairness_measure == 'kullback-leibler':
+            return self.kullback_leibler(user_profile_dist, rec_profile_dist)
+        elif fairness_measure == 'hellinger':
+            return self.hellinger(user_profile_dist, rec_profile_dist)
+        elif fairness_measure == 'pearson':
+            return self.pearson_chi_square(user_profile_dist, rec_profile_dist)
 
 class CalibrationEvaluator:
 
@@ -64,9 +73,39 @@ class CalibrationEvaluator:
         Mean Average Calibration Error (MACE)
         Mean Rank Miscalibration (MRMC)
     """
-    def __init__(self, alpha: float = 0.01) -> None:
-        self.alpha = alpha
+    def __init__(self, matrix: pd.DataFrame, userColumn: str, itemColumn: str, genres_map: dict) -> None:
+        self.fairness_measures = FairnessMeasures()
+        self.distributor = Distributions(matrix, userColumn, itemColumn, genres_map)
+        
 
+    # MRMC (Mean Rank Miscalibration)
+    def get_mean_rank_miscalibration(self, predictions, fairness_measure: Literal['kullback-leibler', 'hellinger', 'pearson']):
+        
+        MRMC = 0
+        
+        for user in predictions:
+            RMC = 0
+
+            # Train or test
+            user_profile_dist = self.distributor.get_user_profile_distribution(user)
+            if user_profile_dist == {}:
+                continue
+            
+            void = self.fairness_measures.calculate_fairness_measure(fairness_measure, user_profile_dist, {})
+            N = len(predictions[user])
+
+            for i in range(1, N):
+                user_rec_dist = self.distributor.get_user_recommendation_distribution(predictions[user][:i])
+                kl = self.fairness_measures.calculate_fairness_measure(fairness_measure, user_profile_dist, user_rec_dist)
+                RMC += kl/void
+
+            MRMC += RMC/N
+        
+        return MRMC/len(predictions)
+
+    # MACE (Mean Average CAlibration Error)
+    def get_mean_average_calibration_error(self):
+        ...
     
 
 class RSEvaluator:

@@ -30,7 +30,9 @@ class Distributions:
         self.itemColumn = itemColumn
         self.userColumn = userColumn
         self.genres_map = genres_map
-        
+
+    def set_df(self, df):
+        self.df = df    
     
     def get_user_profile_distribution(self, userId: int) -> dict:
     
