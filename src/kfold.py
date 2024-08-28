@@ -8,6 +8,8 @@ from .data_loader import DataLoader
 from dotenv import load_dotenv
 from .calibration import Calibration
 from statistics import stdev
+from .evaluator import CalibrationEvaluator, RSEvaluator
+import numpy as np
 
 """
     Statistics
@@ -68,6 +70,9 @@ class KFOLD:
         self.model_type = model_type
         self.genre_map = genre_map
 
+
+        
+
     def run_cross_validation(self) -> pd.DataFrame:
         i = 1
         results = pd.DataFrame()
@@ -76,19 +81,23 @@ class KFOLD:
         if self.model_type == 'FC':
             print(f'{i}) Running FC')
 
-            for lamb in range(0, 1.1, 0.1):
-                
+            for lamb in np.arange(0, 1.1, 0.1):
+                print("*" * 30)
                 print(f'Lambda = {lamb}')
-                mace = []
-                mrmc = []
-                mapMeasure = []
-                mrr = []
+
 
                 for fairness_measure in ['kullback-leibler', 'hellinger', 'pearson']:
-                    print(F'!FAIRNESS MEASURE: {fairness_measure}!')
+                    print('Reseting metrics lists')
+                    mace = []
+                    mrmc = []
+                    mapMeasure = []
+                    mrr = []
                     
+                    print("*" * 20)
+                    print(f'FAIRNESS MEASURE: {fairness_measure}')
+                    i = 1
                     for train_idx, test_idx in self.kf.split(self.df, y=self.df[self.userColumn]):
-                        print("="+5 + f'{i}º Fold' + "="*5)
+                        print("="*5 + f'{i}º Fold' + "="*5)
 
                         # Separação entre treino e teste (com conversão para dataframe do spark, visto que o método ALS pertence
                         # ao spark)
@@ -109,7 +118,7 @@ class KFOLD:
                         
                         # Obtedo 100 recomendações para cada usuário do DataFrame
                         print('Getting n = 100 predictions for each user')
-                        predictions = als.get_test_predictions()
+                        predictions = als.get_predictions()
                         predictions_user_map = als.predictions_user_map(predictions=predictions)
 
                         print("Calibrating...")
@@ -117,12 +126,32 @@ class KFOLD:
                         prediction_user_map_after_calibration = calibrator.calibrate_for_all_users(fairness_measure)
 
                         # TODO: Calcular MACE, MRMC, MAP, MRR
-                        mace.append(...)
-                        mrmc.append(...)
-                        mapMeasure.append(...)
-                        mrr.append(...)              
+                        ############## CALIBRATION EVALUATION ############## 
+                        calibration_evaluator = CalibrationEvaluator(test, self.userColumn, self.itemColumn, self.genre_map)
+                        
+                        print('CALCULATING MRMC')
+                        mrmc_calculation = calibration_evaluator.get_mean_rank_miscalibration(prediction_user_map_after_calibration, fairness_measure)
+                        mrmc.append(mrmc_calculation)
+
+                        print('CALCULATING MACE')
+                        mace_calculation = calibration_evaluator.get_mean_average_calibration_error(prediction_user_map_after_calibration)
+                        mace.append(mace_calculation)
+
+                        ############## PRECISION EVALUATION ##############
+                        rs_evaluation = RSEvaluator(prediction_user_map_after_calibration, test, self.userColumn, self.itemColumn)
+
+                        print('CALCULATING MAP')
+                        map_calculation = rs_evaluation.mean_average_precision()
+                        mapMeasure.append(map_calculation)
+
+                        print('CALCULATING MRR')
+                        mrr_calculation = rs_evaluation.mean_reciprocal_rank()
+                        mrr.append(mrr_calculation) 
+
                         i+=1
 
+                    print("=" * 15)
+                    print('Getting mean and stdev')
                     mace_mean = sum(mace)/len(mace)
                     mace_desvpad = stdev(mace)
                     mrmc_mean = sum(mrmc)/len(mrmc)
@@ -133,15 +162,21 @@ class KFOLD:
                     mrr_desvpad = stdev(mrr)
 
                     new_row = {'FairnessMeasure': fairness_measure,
-                               'Lamba': lamb,
-                               'MACE': [mace_mean, mace_desvpad],
-                               'MRMC': [mrmc_mean, mrmc_desvpad],
-                               'MAP': [map_mean, mace_desvpad],
-                               'MRR': [mrr_mean, mrr_desvpad]
+                               'Lambda': lamb,
+                               'MACE': {'mean': mace_mean, 'stdev': mace_desvpad},
+                               'MRMC': {'mean': mrmc_mean, 'stdev':mrmc_desvpad},
+                               'MAP': {'mean': map_mean, 'stdev': mace_desvpad},
+                               'MRR': {'mean': mrr_mean, 'stdev': mrr_desvpad}
                                }
                     
-                    results = results.append(new_row)
-                    results = results.reset_index(drop=True)
+                    print('Appending to results')
+                    new_df_results = pd.DataFrame(new_row)
+                    new_df_results.index.name = 'Statistic'
+                    new_df_results = new_df_results.reset_index()[['Lambda', 'FairnessMeasure', 'Statistic', 'MACE', 'MRMC', 'MAP', 'MRR']]
+                    results = pd.concat([results, new_df_results])
+                    
+                    print('\n')
+
         return results
 
 

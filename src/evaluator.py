@@ -12,6 +12,7 @@ class FairnessMeasures:
         p_g_u = user_profile_dist
         q_g_u = rec_profile_dist
         
+        
         Ckl = 0
         for genre, p in p_g_u.items():
             q = q_g_u.get(genre, 0.0)
@@ -54,7 +55,7 @@ class FairnessMeasures:
             q_term = q_g_u.get(genre, 0.0)
             til_q = (1-self.alpha)*q_term + self.alpha*p_term
 
-            pearson_sum += (((p_term - til_q)^2)/til_q)
+            pearson_sum += (((p_term - til_q)**2)/til_q)
         
         return pearson_sum
     
@@ -76,6 +77,7 @@ class CalibrationEvaluator:
     def __init__(self, matrix: pd.DataFrame, userColumn: str, itemColumn: str, genres_map: dict) -> None:
         self.fairness_measures = FairnessMeasures()
         self.distributor = Distributions(matrix, userColumn, itemColumn, genres_map)
+        self.genres_map = genres_map
         
 
     # MRMC (Mean Rank Miscalibration)
@@ -104,8 +106,27 @@ class CalibrationEvaluator:
         return MRMC/len(predictions)
 
     # MACE (Mean Average CAlibration Error)
-    def get_mean_average_calibration_error(self):
-        ...
+    def get_mean_average_calibration_error(self, predictions):
+        MACE = 0
+
+        for user in predictions:
+            ACE = 0
+
+            user_profile_dist = self.distributor.get_user_profile_distribution(user)
+            if user_profile_dist == {}:
+                continue
+
+            N = len(predictions[user])
+            for i in range(1, N):
+                CE = 0
+                user_rec_dist = self.distributor.get_user_recommendation_distribution(predictions[user][:i])
+                for g, dist in user_rec_dist.items():
+                    absolute_difference = abs(dist - user_rec_dist.get(g, 0))
+                    CE += absolute_difference/len(user_profile_dist)
+
+            ACE += CE/N
+        
+        return ACE/len(predictions)
     
 
 class RSEvaluator:
@@ -147,20 +168,21 @@ class RSEvaluator:
             
         return MRR/len(self.map_recommendations)
     
-    def _average_precision(self, recommended_items: list, user: int) -> dict:
+    def _average_precision(self, recommended_items: list, user: int) -> float:
         """
         Calcula a precisão média para um usuário.
 
         recommended_items: Lista de itens recomendados para o usuário.
-        relevant_items: Conjunto de itens que são relevantes para o usuário.
+        user: ID do usuário.
 
         Retorna a precisão média.
         """
         hits = 0
         sum_precisions = 0.0
+        relevant_items = self.test[self.test[self.userColumn] == user][self.itemColumn].to_list()
 
         for i, item in enumerate(recommended_items):
-            if item in self.test[self.test[self.userColumn] == user][self.itemColumn].to_list():
+            if item in relevant_items:
                 hits += 1
                 precision_at_i = hits / (i + 1)
                 sum_precisions += precision_at_i
@@ -168,34 +190,23 @@ class RSEvaluator:
         # Retorna AP. Se não houver itens relevantes, retorna 0
         if hits == 0:
             return 0.0
-        return sum_precisions / len(self.test)
+        return sum_precisions / len(relevant_items)
 
     def mean_average_precision(self):
         """
         Calcula a média da precisão média (MAP) para um conjunto de usuários.
 
         recommendations: Um dicionário onde a chave é o userId e o valor é a lista de itens recomendados.
-        ground_truth: Um dicionário onde a chave é o userId e o valor é o conjunto de itens relevantes.
-                        (considerado o conjunto de testes)
 
         Retorna a MAP.
         """
+        users = self.test[self.userColumn].drop_duplicates().to_list()
         ap_sum = 0.0
-        num_users = len(self.test)
+        num_users = len(users)
 
-        for user in self.ground_truth:
+        for user in users:
             ap_sum += self._average_precision(self.map_recommendations.get(user, []), user)
 
         # Retorna MAP
-        return ap_sum / num_users
-
-class CrossValidation:
-    def __init__(self) -> None:
-        pass
-
-    def cross_val(self, n_folds: int = 5):
-        pass
-
-
-
+        return ap_sum / num_users if num_users > 0 else 0.0
     

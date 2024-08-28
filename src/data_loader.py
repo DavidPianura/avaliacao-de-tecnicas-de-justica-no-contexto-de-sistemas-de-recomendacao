@@ -62,6 +62,9 @@ class DataLoader:
     def load_data(self) -> DataFrame:
         return self._load_csv()
 
+    def convert_to_pandas(self, df: DataFrame):
+        return df.toPandas()
+
     def _load_csv(self) -> DataFrame:
         df =  self.spark.read.csv(
                                     self.file_path,

@@ -1,0 +1,5 @@
+,FairnessMeasure,Lamba,MACE,MRMC,MAP,MRR
+mean,KL,0.1,2,2,2,2
+stdev,KL,0.1,2,2,2,2
+mean,KL,0.2,3,3,3,3
+stdev,KL,0.2,3,3,3,3

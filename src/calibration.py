@@ -18,13 +18,12 @@ class Calibration():
                  ):
         
         self.distributions = Distributions(train, 
-                                      prediction_user_map=prediction_user_map,
                                       userColumn=userColumn,
                                       itemColumn=itemColumn,
                                       genres_map=genres_map,
                                       )
 
-        self.weights = [i for i in range(0.0, 1.1, 0.1)]
+        # self.weights = [i for i in range(0.0, 1.1, 0.1)]
         self.fairness_measures = FairnessMeasures()
         self.evaluator = FairnessMeasures(alpha=0.001)
 
@@ -52,7 +51,7 @@ class Calibration():
                     
                 temporary_list = re_ranked_list + [item]
                 temporary_list_with_score = re_ranked_with_score + [(item, rating)]
-                    
+                temporary_list_with_score_dist = self.distributions.get_user_recommendation_distribution(temporary_list_with_score)
                 weight_part = sum(
                     recomendation[1]
                     for recomendation in temporary_list_with_score
@@ -60,7 +59,7 @@ class Calibration():
                 
                 full_tmp_calib = self.evaluator.calculate_fairness_measure(fairness_measure, 
                                                                            user_profile_dist=profile_dist,
-                                                                           rec_profile_dist=temporary_list_with_score)
+                                                                           rec_profile_dist=temporary_list_with_score_dist)
                 #full_tmp_calib = calculate_calibration_sum(
                 #    profile_dist,
                 #    temporary_list_with_score,
@@ -84,7 +83,7 @@ class Calibration():
     def calibrate_for_all_users(self, fairness_measure):
         
         prediction_user_map_after_calibration = {}
-        for user in self.test[self.userColumn].unique():
+        for user in self.test[self.userColumn].drop_duplicates().to_list():
             user_profile_distribution = self.distributions.get_user_profile_distribution(user)
             reranked_list = self.rerank_recommendation(user_profile_distribution, 
                                                        self.prediction_user_map[user], 
@@ -92,7 +91,7 @@ class Calibration():
                                                        10, 
                                                        self.tradeoff,
                                                        fairness_measure)
-            prediction_user_map_after_calibration[user] = reranked_list  
+            prediction_user_map_after_calibration[user] = reranked_list[1]
         
         return prediction_user_map_after_calibration
     ###########################################################################################

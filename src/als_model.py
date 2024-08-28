@@ -51,7 +51,9 @@ class ALSModel:
         return predictions
     
     def get_predictions(self, number_of_recomendations: int = 100) -> pd.DataFrame:
-        userRec = self.model.recommendForAllUsers(number_of_recomendations) 
+        users = self.test.select(self.usercol).distinct()
+        userRec = self.model.recommendForUserSubset(users, number_of_recomendations)
+        # userRec = self.model.recommendForAllUsers(number_of_recomendations) 
         userRecsOnlyItemId = userRec.select(userRec['userId'], userRec['recommendations'])
         return userRecsOnlyItemId.toPandas()
     
