@@ -78,6 +78,7 @@ class CalibrationEvaluator:
         self.fairness_measures = FairnessMeasures()
         self.distributor = Distributions(matrix, userColumn, itemColumn, genres_map)
         self.genres_map = genres_map
+        self.all_genres = set(genre for sublist in list(genres_map.values()) for genre in sublist)
         
 
     # MRMC (Mean Rank Miscalibration)
@@ -105,6 +106,7 @@ class CalibrationEvaluator:
         
         return MRMC/len(predictions)
 
+
     # MACE (Mean Average CAlibration Error)
     def get_mean_average_calibration_error(self, predictions):
         MACE = 0
@@ -118,15 +120,16 @@ class CalibrationEvaluator:
 
             N = len(predictions[user])
             for i in range(1, N):
-                CE = 0
                 user_rec_dist = self.distributor.get_user_recommendation_distribution(predictions[user][:i])
-                for g, dist in user_rec_dist.items():
-                    absolute_difference = abs(dist - user_rec_dist.get(g, 0))
-                    CE += absolute_difference/len(user_profile_dist)
+                #all_genres = set(set(user_profile_dist.keys()).union(set(user_rec_dist.keys())))
 
-            ACE += CE/N
+                for g in self.all_genres:
+                    absolute_difference = abs(user_profile_dist.get(g, 0) - user_rec_dist.get(g, 0))
+                    ACE += absolute_difference/len(self.all_genres)
+
+            MACE += ACE/N
         
-        return ACE/len(predictions)
+        return MACE/len(predictions)
     
 
 class RSEvaluator:
@@ -168,29 +171,6 @@ class RSEvaluator:
             
         return MRR/len(self.map_recommendations)
     
-    def _average_precision(self, recommended_items: list, user: int) -> float:
-        """
-        Calcula a precisão média para um usuário.
-
-        recommended_items: Lista de itens recomendados para o usuário.
-        user: ID do usuário.
-
-        Retorna a precisão média.
-        """
-        hits = 0
-        sum_precisions = 0.0
-        relevant_items = self.test[self.test[self.userColumn] == user][self.itemColumn].to_list()
-
-        for i, item in enumerate(recommended_items):
-            if item in relevant_items:
-                hits += 1
-                precision_at_i = hits / (i + 1)
-                sum_precisions += precision_at_i
-
-        # Retorna AP. Se não houver itens relevantes, retorna 0
-        if hits == 0:
-            return 0.0
-        return sum_precisions / len(relevant_items)
 
     def mean_average_precision(self):
         """
@@ -200,13 +180,26 @@ class RSEvaluator:
 
         Retorna a MAP.
         """
-        users = self.test[self.userColumn].drop_duplicates().to_list()
-        ap_sum = 0.0
-        num_users = len(users)
+        total_AP = 0
+        MAP = 0
+        n_relevants = 0
 
-        for user in users:
-            ap_sum += self._average_precision(self.map_recommendations.get(user, []), user)
-
-        # Retorna MAP
-        return ap_sum / num_users if num_users > 0 else 0.0
+        for user_id in self.map_recommendations:
+            n_relevants = 0
+            AP = 0
+            sum_precisions = 0
+            
+            for index, (item, score) in enumerate(self.map_recommendations[user_id]):
+                
+                if self._item_is_relevant(user_id, item):
+                    n_relevants += 1
+                    precision_at_i = n_relevants/(index+1)
+                    sum_precisions += precision_at_i
+                        
+            if n_relevants > 0:
+                AP = sum_precisions/n_relevants
+                total_AP += AP
+        
+        MAP = total_AP/len(self.map_recommendations)
+        return MAP
     

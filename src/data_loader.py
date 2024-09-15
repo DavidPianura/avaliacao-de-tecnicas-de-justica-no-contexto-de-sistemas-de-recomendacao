@@ -73,14 +73,14 @@ class DataLoader:
                                     nullValue=r'\N',
                                     encoding=self.encoding,
                                 )
-        df = df.toDF(*self.header)
+        df = df.toDF(*self.header) if self.header is not None else df
         return df
     
     def data_to_csv(self, df: DataFrame, destination: str) -> None:
         df.coalesce(1).write.option("header", "true").csv(destination)
 
     def _load_genres_data(self) -> pd.DataFrame:
-        genres = pd.read_csv(self.genre_data_path, sep = self.genre_data_separator, names=self.genre_data_header, encoding=self.genre_data_encoding)
+        genres = pd.read_csv(self.genre_data_path, sep = self.genre_data_separator, names=self.genre_data_header, encoding=self.genre_data_encoding, header=0)
         genres = genres[[self.genre_item_column, self.genre_genre_column]]
         genres = genres.rename(columns={self.genre_item_column: 'item', self.genre_genre_column: 'genres'})
         return genres

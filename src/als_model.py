@@ -32,8 +32,8 @@ class ALSModel:
         
     
     def _set_als_model(self) -> ALS:
-        als = ALS(maxIter=5, 
-                  regParam=0.01, 
+        als = ALS(maxIter=10, 
+                  regParam=0.1, 
                   userCol=self.usercol, 
                   itemCol=self.itemcol, 
                   ratingCol=self.ratingcol, 
@@ -54,7 +54,7 @@ class ALSModel:
         users = self.test.select(self.usercol).distinct()
         userRec = self.model.recommendForUserSubset(users, number_of_recomendations)
         # userRec = self.model.recommendForAllUsers(number_of_recomendations) 
-        userRecsOnlyItemId = userRec.select(userRec['userId'], userRec['recommendations'])
+        userRecsOnlyItemId = userRec.select(userRec[self.usercol], userRec['recommendations'])
         return userRecsOnlyItemId.toPandas()
     
     def get_test_predictions(self) -> pd.DataFrame:
@@ -69,9 +69,9 @@ class ALSModel:
     
     def predictions_user_map(self, predictions: pd.DataFrame) -> dict:
         user_map = {}
-        for user_id, rows in predictions.set_index('userId')['recommendations'].items():
+        for user_id, rows in predictions.set_index(self.usercol)['recommendations'].items():
             # Converte as linhas de recomendação em uma lista de tuplas (movieId, rating)
-            user_map[user_id] = [(row.movieId, row.rating) for row in rows]
+            user_map[user_id] = [(row[self.itemcol], row[self.ratingcol]) for row in rows]
         
         return user_map     
 

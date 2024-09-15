@@ -19,7 +19,7 @@ class KNNFBC:
         self.rating_column = rating_column
         self.item_column = item_column
 
-        self.knn = NearestNeighbors(metric='jaccard', algorithm='brute')
+        self.knn = NearestNeighbors(n_neighbors=100, metric='cossine', algorithm='brute')
 
     def get_model(self) -> NearestNeighbors:
         return self.knn

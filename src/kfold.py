@@ -10,6 +10,7 @@ from .calibration import Calibration
 from statistics import stdev
 from .evaluator import CalibrationEvaluator, RSEvaluator
 import numpy as np
+from math import sqrt
 
 """
     Statistics
@@ -58,7 +59,11 @@ class KFOLD:
                  n_folds: int = 5) -> None:
         
         load_dotenv()
-        self.spark = SparkSession.builder.appName("kFOLD").getOrCreate()
+        self.spark = SparkSession.builder \
+                    .appName("KFOLD") \
+                    .config("spark.driver.memory", "4g") \
+                    .config("spark.executor.memory", "8g") \
+                    .getOrCreate()
 
         self.df = dataframe
         self.userColumn = userColumn
@@ -132,10 +137,12 @@ class KFOLD:
                         print('CALCULATING MRMC')
                         mrmc_calculation = calibration_evaluator.get_mean_rank_miscalibration(prediction_user_map_after_calibration, fairness_measure)
                         mrmc.append(mrmc_calculation)
+                        print(f'MRMC = {mrmc_calculation}')
 
                         print('CALCULATING MACE')
                         mace_calculation = calibration_evaluator.get_mean_average_calibration_error(prediction_user_map_after_calibration)
                         mace.append(mace_calculation)
+                        print(f'MACE = {mace_calculation}')
 
                         ############## PRECISION EVALUATION ##############
                         rs_evaluation = RSEvaluator(prediction_user_map_after_calibration, test, self.userColumn, self.itemColumn)
@@ -143,30 +150,44 @@ class KFOLD:
                         print('CALCULATING MAP')
                         map_calculation = rs_evaluation.mean_average_precision()
                         mapMeasure.append(map_calculation)
+                        print(f'MAP = {map_calculation}')
 
                         print('CALCULATING MRR')
                         mrr_calculation = rs_evaluation.mean_reciprocal_rank()
                         mrr.append(mrr_calculation) 
+                        print(f'MRR = {mrr_calculation}')
 
                         i+=1
 
                     print("=" * 15)
                     print('Getting mean and stdev')
+
                     mace_mean = sum(mace)/len(mace)
+                    print(f'MACE Mean = {mace_mean}')
                     mace_desvpad = stdev(mace)
+                    print(f'MACE Error = {mace_desvpad}')
+
                     mrmc_mean = sum(mrmc)/len(mrmc)
+                    print(f'MRMC Mean = {mrmc_mean}')
                     mrmc_desvpad = stdev(mrmc)
+                    print(f'MRMC Error = {mrmc_desvpad}')
+
                     map_mean = sum(mapMeasure)/len(mapMeasure)
-                    map_mean = stdev(mapMeasure)
+                    print(f'MAP Mean = {map_mean}')
+                    map_desvpad = stdev(mapMeasure)
+                    print(f'MAP Error = {map_desvpad}')
+
                     mrr_mean = sum(mrr)/len(mrr)
+                    print(f'MRR Mean = {mrr_mean}')
                     mrr_desvpad = stdev(mrr)
+                    print(f'MRR Error = {mrr_desvpad}')
 
                     new_row = {'FairnessMeasure': fairness_measure,
                                'Lambda': lamb,
-                               'MACE': {'mean': mace_mean, 'stdev': mace_desvpad},
-                               'MRMC': {'mean': mrmc_mean, 'stdev':mrmc_desvpad},
-                               'MAP': {'mean': map_mean, 'stdev': mace_desvpad},
-                               'MRR': {'mean': mrr_mean, 'stdev': mrr_desvpad}
+                               'MACE': {'mean': mace_mean, 'stdev': mace_desvpad/sqrt(len(mace))},
+                               'MRMC': {'mean': mrmc_mean, 'stdev':mrmc_desvpad/sqrt(len(mrmc))},
+                               'MAP': {'mean': map_mean, 'stdev': map_desvpad/sqrt(len(mapMeasure))},
+                               'MRR': {'mean': mrr_mean, 'stdev': mrr_desvpad/sqrt(len(mrr))}
                                }
                     
                     print('Appending to results')
